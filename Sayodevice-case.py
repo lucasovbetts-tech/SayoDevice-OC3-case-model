@@ -8,7 +8,10 @@ All dimensions are ESTIMATES - measure your O3C's PCB with callipers and
 edit the PARAMETERS block before ordering anything.
 
 Design: plain key opening with large radii (cheap to machine), stepped bezel
-pocket around the screen, flat bottom plate exported as DXF for laser cutting.
+pocket around the screen, M3 corner posts in the top shell, PCB standoffs on
+the bottom plate (DXF version is flat, for laser cutting + brass standoffs).
+
+Screws: 4x M3x10 countersunk (case), 4x M2x6 (PCB onto standoffs).
 
 Outputs (~/Downloads/o3c_case):
   o3c_case_top/bottom.step       -> send to CNC shop for the aluminium case
@@ -56,6 +59,16 @@ KNURL_TEETH = 70
 USB_W, USB_H = 11.0, 5.0           # USB-C slot on the back wall
 USB_X = -14.0
 SCREW_INSET = 6.0                  # M3 screws through the bottom plate
+SCREW_POST_D = 7.0                 # posts inside the top shell the M3 screws thread into
+SCREW_PILOT_D = 2.5                # 2.5 = tap for M3 (aluminium), 4.0 = M3 heat-set insert (3D print)
+SCREW_DEPTH = 8.0                  # pilot hole depth into the post (M3x10 countersunk screws)
+
+# PCB standoffs on the bottom plate - PLACEHOLDER positions, measure the O3C's mounting holes
+PCB_HOLES = [(-22.0, 0.0), (22.0, 0.0), (-22.0, 20.0), (22.0, 20.0)]
+PCB_STANDOFF_H = 3.0               # gap between bottom plate and PCB underside
+PCB_STANDOFF_D = 6.0
+PCB_PILOT_D = 1.6                  # 1.6 = tap for M2 (aluminium), 3.2 = M2 heat-set insert (3D print)
+PCB_CLEAR_D = 2.4                  # laser-cut plate: holes for off-the-shelf M2 brass standoffs
 
 SCREEN_TEXT = ("Key Presses", "500")
 
@@ -74,14 +87,23 @@ def rounded_cut(x, y, w, d, z0, h, r):
     return (cq.Workplane("XY", origin=(x, y, z0)).rect(w, d).extrude(h)
             .edges("|Z").fillet(r))
 
+def pins(points, d, z0, h):
+    """Vertical cylinders at each (x, y) point - used for posts, standoffs and holes."""
+    return cq.Workplane("XY", origin=(0, 0, z0)).pushPoints(points).circle(d / 2).extrude(h)
+
+sx, sy = CASE_W / 2 - SCREW_INSET, CASE_D / 2 - SCREW_INSET
+screws = [(x, y) for x in (-sx, sx) for y in (-sy, sy)]
+
 # top shell: hollow box, open at the bottom, chamfered top edge
 top = rounded_box(CASE_W, CASE_D, TOP_H, CORNER_R).faces(">Z").edges().chamfer(TOP_CHAMFER)
 top = top.cut(rounded_box(CASE_W - 2 * WALL, CASE_D - 2 * WALL, TOP_H - WALL, CORNER_R - WALL))
+# corner posts from the roof down, for the M3 screws coming up through the bottom plate
+top = top.union(pins(screws, SCREW_POST_D, 0, TOP_H - WALL))
 
 key_open_w = KEY_COUNT * KEY_PITCH + KEY_OPENING_PAD
 key_open_d = KEY_PITCH + KEY_OPENING_PAD
 cuts = [
-    # keys: plain through opening
+    # switches/keycaps: plain through opening
     rounded_cut(0, KEY_ROW_Y, key_open_w, key_open_d, -1, TOP_H + 2, KEY_OPENING_R),
     # screen: stepped bezel pocket + window
     rounded_cut(*SCREEN_POS, SCREEN_W + 2 * SCREEN_BEZEL, SCREEN_H + 2 * SCREEN_BEZEL,
@@ -91,16 +113,20 @@ cuts = [
     cq.Workplane("XY", origin=(*KNOB_POS, -1)).circle(KNOB_HOLE_D / 2).extrude(TOP_H + 2),
     cq.Workplane("XY").box(USB_W, WALL * 3, USB_H).edges("|Y").fillet(USB_H / 2 - 0.01)
       .translate((USB_X, CASE_D / 2 - WALL / 2, USB_H / 2 + 2.0)),
+    # M3 pilot holes in the corner posts
+    pins(screws, SCREW_PILOT_D, -1, SCREW_DEPTH + 1),
 ]
 for c in cuts:
     top = top.cut(c)
-top = top.translate((0, 0, BOTTOM_H))
+top = top.translate((0, 0, BOTTOM_H)) #Raises the top so it sits ontop of the bottom instead of overlapping
 
-# bottom plate: flat with plain M3 clearance holes (laser-cut, countersink by hand)
-sx, sy = CASE_W / 2 - SCREW_INSET, CASE_D / 2 - SCREW_INSET
-screws = [(x, y) for x in (-sx, sx) for y in (-sy, sy)]
-bottom = (rounded_box(CASE_W, CASE_D, BOTTOM_H, CORNER_R)
-          .faces("<Z").workplane().pushPoints(screws).hole(3.4))
+# bottom plate: M3 clearance holes (countersink by hand)
+bottom = rounded_box(CASE_W, CASE_D, BOTTOM_H, CORNER_R).cut(pins(screws, 3.4, -1, BOTTOM_H + 2))
+# laser-cut version stays flat: PCB holes take off-the-shelf M2 brass standoffs instead
+plate_flat = bottom.cut(pins(PCB_HOLES, PCB_CLEAR_D, -1, BOTTOM_H + 2))
+# CNC / 3D print version: standoffs built in, PCB screws down into them (1 mm floor left under each hole)
+bottom = bottom.union(pins(PCB_HOLES, PCB_STANDOFF_D, BOTTOM_H, PCB_STANDOFF_H))
+bottom = bottom.cut(pins(PCB_HOLES, PCB_PILOT_D, 1.0, BOTTOM_H + PCB_STANDOFF_H))
 
 #===============================================================================
 # Display-Only Parts
@@ -149,7 +175,7 @@ desk = cq.Workplane("XY").box(3000, 3000, 2).translate((0, 0, -1))
 cq.exporters.export(top, f"{OUT}/o3c_case_top.step")
 cq.exporters.export(bottom, f"{OUT}/o3c_case_bottom.step")
 # 2D outline for laser cutting the bottom plate
-outline = bottom.faces("<Z").val()
+outline = plate_flat.faces("<Z").val()
 outline = outline.translate(cq.Vector(0, 0, -outline.Center().z))
 cq.exporters.export(cq.Workplane("XY").add(outline), f"{OUT}/o3c_case_bottom_lasercut.dxf")
 parts = {"top": top, "bottom": bottom, "keycaps": keycaps, "knob": knob,
