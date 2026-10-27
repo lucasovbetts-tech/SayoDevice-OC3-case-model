@@ -81,9 +81,11 @@ TOP_Z = BOTTOM_H + TOP_H           # height of the top surface
 #===============================================================================
 
 def rounded_box(w, d, h, r):
+    """Box centred on the origin, sitting on z=0, with rounded vertical corners."""
     return cq.Workplane("XY").rect(w, d).extrude(h).edges("|Z").fillet(r)
 
 def rounded_cut(x, y, w, d, z0, h, r):
+    """Rounded box at (x, y) starting at height z0 - used to cut openings and pockets."""
     return (cq.Workplane("XY", origin=(x, y, z0)).rect(w, d).extrude(h)
             .edges("|Z").fillet(r))
 
@@ -91,8 +93,9 @@ def pins(points, d, z0, h):
     """Vertical cylinders at each (x, y) point - used for posts, standoffs and holes."""
     return cq.Workplane("XY", origin=(0, 0, z0)).pushPoints(points).circle(d / 2).extrude(h)
 
+# M3 screw positions: SCREW_INSET in from each edge, one per corner
 sx, sy = CASE_W / 2 - SCREW_INSET, CASE_D / 2 - SCREW_INSET
-screws = [(x, y) for x in (-sx, sx) for y in (-sy, sy)]
+screws = [(x, y) for x in (-sx, sx) for y in (-sy, sy)]   # all 4 combinations of left/right, front/back
 
 # top shell: hollow box, open at the bottom, chamfered top edge
 top = rounded_box(CASE_W, CASE_D, TOP_H, CORNER_R).faces(">Z").edges().chamfer(TOP_CHAMFER)
@@ -100,8 +103,10 @@ top = top.cut(rounded_box(CASE_W - 2 * WALL, CASE_D - 2 * WALL, TOP_H - WALL, CO
 # corner posts from the roof down, for the M3 screws coming up through the bottom plate
 top = top.union(pins(screws, SCREW_POST_D, 0, TOP_H - WALL))
 
+# key opening fits all keys in a row plus a small gap around the keycaps
 key_open_w = KEY_COUNT * KEY_PITCH + KEY_OPENING_PAD
 key_open_d = KEY_PITCH + KEY_OPENING_PAD
+# everything to subtract from the shell (cuts start at -1 / overshoot by 2 so they go cleanly through)
 cuts = [
     # switches/keycaps: plain through opening
     rounded_cut(0, KEY_ROW_Y, key_open_w, key_open_d, -1, TOP_H + 2, KEY_OPENING_R),
@@ -136,7 +141,7 @@ bottom = bottom.cut(pins(PCB_HOLES, PCB_PILOT_D, 1.0, BOTTOM_H + PCB_STANDOFF_H)
 # keycaps (Cherry-ish profile)
 keycaps = cq.Workplane("XY")
 for i in range(KEY_COUNT):
-    x = (i - (KEY_COUNT - 1) / 2) * KEY_PITCH
+    x = (i - (KEY_COUNT - 1) / 2) * KEY_PITCH   # spread keys evenly around x=0 (-19.05, 0, 19.05)
     cap = (cq.Workplane("XY", origin=(x, KEY_ROW_Y, TOP_Z - 4.0))
            .rect(KEY_PITCH - 1.4, KEY_PITCH - 1.4).workplane(offset=8.5)
            .rect(KEY_PITCH - 5.5, KEY_PITCH - 6.5).loft().edges().fillet(0.9))
@@ -144,7 +149,7 @@ for i in range(KEY_COUNT):
 
 # knurled knob: star-shaped profile = knurl ridges, smooth top with indicator line
 r_out, r_in = KNOB_D / 2, KNOB_D / 2 - 0.45
-pts = []
+pts = []   # points around the knob, alternating outer/inner radius to make the ridges
 for i in range(KNURL_TEETH * 2):
     a = math.pi * i / KNURL_TEETH
     r = r_out if i % 2 == 0 else r_in
@@ -190,6 +195,7 @@ for name, shape in parts.items():
 
 # screen image (what the display shows)
 def make_screen_png(path, w=480, h=260):
+    """Draw the fake screen contents (title, number, bar icon) as an image for the render."""
     img = Image.new("RGB", (w, h), (8, 9, 12))
     d = ImageDraw.Draw(img)
     def font(size, bold=False):
@@ -220,6 +226,7 @@ MATERIALS = {   # colour, diffuse, specular, specular power, ambient
 }
 
 def actor_from_stl(path):
+    """Load an STL into VTK as a renderable object, with smoothed shading."""
     reader = vtk.vtkSTLReader(); reader.SetFileName(path)
     normals = vtk.vtkPolyDataNormals(); normals.SetInputConnection(reader.GetOutputPort())
     normals.SetFeatureAngle(30)
@@ -228,6 +235,7 @@ def actor_from_stl(path):
     return actor
 
 def screen_actor():
+    """Flat rectangle in the screen pocket, textured with screen.png."""
     plane = vtk.vtkPlaneSource()
     x, y, z = SCREEN_POS[0], SCREEN_POS[1], TOP_Z - SCREEN_POCKET_DEPTH - 0.4
     plane.SetOrigin(x - SCREEN_W / 2, y - SCREEN_H / 2, z)
@@ -242,6 +250,7 @@ def screen_actor():
     return actor
 
 def render(path, azimuth, elevation, zoom=0.85):
+    """Render all parts to a PNG. azimuth = angle around the case, elevation = angle from above."""
     ren = vtk.vtkRenderer()
     ren.GradientBackgroundOn()
     ren.SetBackground(0.05, 0.05, 0.055); ren.SetBackground2(0.12, 0.12, 0.13)
