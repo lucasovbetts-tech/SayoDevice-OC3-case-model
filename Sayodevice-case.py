@@ -177,12 +177,16 @@ desk = cq.Workplane("XY").box(3000, 3000, 2).translate((0, 0, -1))
 # Export
 #===============================================================================
 
+#Exports the Top/Bottom step files for the CNC machine
 cq.exporters.export(top, f"{OUT}/o3c_case_top.step")
 cq.exporters.export(bottom, f"{OUT}/o3c_case_bottom.step")
+
 # 2D outline for laser cutting the bottom plate
 outline = plate_flat.faces("<Z").val()
 outline = outline.translate(cq.Vector(0, 0, -outline.Center().z))
 cq.exporters.export(cq.Workplane("XY").add(outline), f"{OUT}/o3c_case_bottom_lasercut.dxf")
+
+# STL files: top/bottom for 3D-print test fits, all parts are loaded by the render below
 parts = {"top": top, "bottom": bottom, "keycaps": keycaps, "knob": knob,
          "knob_line": knob_line, "plug": plug, "cable": cable, "desk": desk}
 for name, shape in parts.items():
