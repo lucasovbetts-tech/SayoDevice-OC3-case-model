@@ -1,6 +1,6 @@
 # SayoDevice O3C Case
 
-A parametric matte black aluminium case for the SayoDevice O3C macropad, built in Python with [CadQuery](https://cadquery.readthedocs.io/).
+A parametric matte black aluminium enclosure for the SayoDevice O3C macropad, built in Python with [CadQuery](https://cadquery.readthedocs.io/).
 
 ![Front view of the O3C case](Rendered-OC3.png)
 
@@ -8,12 +8,20 @@ A parametric matte black aluminium case for the SayoDevice O3C macropad, built i
 
 ## Design
 
-- Two parts: a top shell and a flat bottom plate held together with M3 screws
-- A single key opening with large corner radii, which keeps machining cheap
-- A stepped bezel pocket around the 0.96" screen
-- Knurled volume knob and a USB-C slot in the back wall
+The case replaces the O3C's original plates. Only the keycaps, knob, screen and USB-C port are visible from outside.
 
-> **Note:** All dimensions are estimates. Measure your O3C's PCB with calipers and edit the parameters at the top of `Sayodevice-case.py` before ordering anything.
+| Kept from the O3C | Replaced by the case |
+|---|---|
+| PCB | Black metal top plate → roof of the top shell |
+| Top acrylic frame (holds the screen) | Bottom acrylic + bottom metal plate → base |
+| Switches, keycaps, knob | |
+
+- **Top shell:** 3 mm roof with walls that hide the PCB and acrylic. The roof is thinned to 1.4 mm (the same as the original plate) in one long recess under the keycaps and a round recess under the knob, so the switches clip in like they did originally.
+- **Base:** 1.6 mm floor with 4 posts (3.8 mm, the same height as the old bottom acrylic) that the PCB sits on.
+- **Screws:** 4 hidden M2 screws come up from underneath through the base, posts, PCB and acrylic into tapped holes in the roof, clamping everything together.
+- **Size:** 71.6 × 56.6 × 13.6 mm (without keycaps and knob).
+
+All key dimensions were measured off a real O3C (±0.1 mm). The parameters at the top of `Sayodevice-case.py` say which ones are measured and which are design choices you can change freely (wall thickness, roof thickness, clearances, chamfer).
 
 ## Usage
 
@@ -36,47 +44,57 @@ Files are written to `~/Downloads/o3c_case`.
 | File | Use |
 |---|---|
 | `o3c_case_top.step`, `o3c_case_bottom.step` | Send to a CNC shop for an aluminium quote |
-| `o3c_case_bottom_lasercut.dxf` | 2D outline for laser cutting the bottom plate |
 | `top.stl`, `bottom.stl` | 3D print these for a test fit before ordering metal |
 | `keycaps`, `knob`, `knob_line`, `plug`, `cable`, `desk` `.stl` | Props for the render only |
 | `o3c_case_render.png`, `o3c_case_render_back.png` | Preview renders |
 | `screen.png` | Screen texture used in the render |
 
-## Ordering notes
+## Test print first
 
-> **Before ordering anything:** measure your O3C's PCB and update the parameters, then 3D print `top.stl` and `bottom.stl` to check the fit. Reprinting plastic is much cheaper than remaking aluminium.
+Print `top.stl` and `bottom.stl` and fit your O3C before ordering aluminium. Reprinting plastic is much cheaper than remaking metal.
+
+- **Top shell:** print it upside down (top face on the bed). Only the USB slot needs a little support.
+- **Base:** print it flat side down, posts up. No supports needed.
+- **Switch holes:** printed holes often come out 0.1-0.2 mm small. File them rather than changing the design.
+- **Screws:** M2 screws cut their own thread in plastic. Tighten gently, especially the front two (only 1.4 mm of material).
+
+Check that:
+1. The PCB and acrylic drop in and the screw holes line up
+2. The USB-C cable plugs all the way in
+3. The switches clip in and the keycaps don't rub when pressed
+4. The knob turns without scraping its recess
+
+## Ordering notes
 
 ### Top shell (CNC machined)
 
 Send `o3c_case_top.step`.
 
-- **Tapped holes:** the 4 corner posts have 2.5 mm pilot holes that need an **M3 thread**. STEP files don't carry thread information, so ask for **4× M3 tapped holes, 8 mm deep** (add a note or a simple drawing with the order).
+- **Tapped holes:** STEP files don't carry thread information, so add a note to the order: **4× M2 tapped holes from the underside**. The back two are blind (1.6 mm pilot, 2 mm deep). The front two go through into the key recess floor (1.4 mm thick).
+- **Switch holes:** the 3 switch holes must be **14.0 mm square** with an inside corner radius of **0.5 mm or less**, otherwise the switches won't seat. The roof under the keys must stay **1.4 mm** thick so the switch clips catch.
 - **Material:** 6061 aluminium is the standard, cheapest choice.
 - **Finish:** bead blast + **black anodise** for the matte black look.
-- **Tolerances:** standard tolerances are fine. Don't pay for tight ones.
+- **Tolerances:** standard tolerances are fine everywhere else.
 
-If you 3D print the top shell instead, change `SCREW_PILOT_D` to `4.0` and use M3 heat-set inserts.
+### Base (CNC machined)
 
-### Bottom plate (laser cut)
+Send `o3c_case_bottom.step`.
 
-Send `o3c_case_bottom_lasercut.dxf`.
-
-> The bottom plate can also be CNC machined from `o3c_case_bottom.step`, which has the PCB standoffs built in (no brass standoffs needed). It also looks slightly cleaner: the standoff holes stop 1 mm short of the bottom, so only the 4 corner screws are visible underneath instead of 8. Laser cutting is usually much cheaper though, since it's just a flat cut-out.
-
-- **Thickness:** 4 mm aluminium (`BOTTOM_H`). If the shop doesn't stock 4 mm, change `BOTTOM_H` to a thickness they do and re-run the script. This changes the case height and screw lengths.
-- **Material:** 5052 or 6061 aluminium.
-- **Units:** the DXF is in **millimetres**. Check the shop's preview shows the plate as 68 × 62 mm.
-- **Countersinking:** all 8 holes need countersinking on the underside so the screw heads sit flush. Add it to the order if offered, otherwise do it by hand with a countersink bit.
-- **Finish:** black anodise or powder coat to match the top, plus deburring.
+- The posts and countersunk screw holes are already in the model.
+- **Material:** 6061 aluminium.
+- **Finish:** bead blast + black anodise to match the top, plus deburring.
 
 ### Hardware
 
 | Qty | Part | Use |
 |---|---|---|
-| 4 | M3 × 10 countersunk screw | Bottom plate → top shell (from below) |
-| 4 | M2 × 3 mm brass standoff, female-female | PCB standoffs |
-| 4 | M2 × 4 countersunk screw | Standoffs → bottom plate (from below) |
-| 4 | M2 × 4 screw | PCB → standoffs (from above) |
-| 4 | Rubber feet (optional) | Grip on the desk, covers screw heads |
+| 4 | M2 × 12 countersunk screw | Base → top shell (from below, through the PCB stack) |
+| 4 | Rubber feet (optional) | Grip on the desk. Keep them clear of the screw heads if you want to open the case again |
 
-The M2 parts are only needed if the O3C's PCB has mounting holes. The `PCB_HOLES` positions in the script are placeholders until measured.
+## Assembly
+
+1. Take the O3C apart: remove the knob, the keycaps and the 4 corner screws, then lift off the top plate (switches come with it) and the bottom plates.
+2. Pull the switches out of the old top plate.
+3. Put the PCB on the base posts and the top acrylic frame (with the screen) on the PCB.
+4. Lower the top shell over the stack and screw it together from underneath.
+5. Clip the switches in through the roof into the hot-swap sockets, then fit the keycaps and knob.
