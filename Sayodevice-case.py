@@ -131,9 +131,15 @@ screws = [(x, y) for x in (-sx, sx) for y in (-sy, sy)]   # all 4 combinations o
 key_xs = [(i - (KEY_COUNT - 1) / 2) * KEY_PITCH for i in range(KEY_COUNT)]   # (-20, 0, 20)
 
 # USB-C slot in the back wall, in world coordinates (cuts both the top shell and the base)
-usb_slot = (cq.Workplane("XY").box(USB_SLOT_W, FIT_GAP + WALL + 1, USB_SLOT_H)
+# U-shaped: rounded top, open at the bottom - the port sits so low that a closed slot
+# would leave a paper-thin sliver of base underneath
+usb_len = FIT_GAP + WALL + 1
+usb_y = OC3_D / 2 + usb_len / 2
+usb_slot = (cq.Workplane("XY").box(USB_SLOT_W, usb_len, USB_SLOT_H)
             .edges("|Y").fillet(USB_SLOT_H / 2 - 0.01)
-            .translate((USB_X, OC3_D / 2 + (FIT_GAP + WALL + 1) / 2, USB_Z)))
+            .translate((USB_X, usb_y, USB_Z))
+            .union(cq.Workplane("XY").box(USB_SLOT_W, usb_len, USB_Z + 1)
+                   .translate((USB_X, usb_y, (USB_Z - 1) / 2))))
 
 # top shell: hollow box, open at the bottom, chamfered top edge, cavity fits the O3C stack exactly
 top = rounded_box(CASE_W, CASE_D, TOP_H, CORNER_R).faces(">Z").edges().chamfer(TOP_CHAMFER)
